@@ -53,57 +53,43 @@
             </div>
 
             <!-- Loading -->
-            <div id="loading" class="text-center text-xl text-gray-600 py-12">
-                <div class="animate-pulse">Laden...</div>
-            </div>
-
-            <!-- Error -->
-            <div id="error" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-                <strong>Fout:</strong> <span id="errorMessage"></span>
-            </div>
+            <div id="loading" class="text-center text-xl text-gray-600 py-12">Laden...</div>
         </div>
     </div>
 
-    <!-- Firebase SDK -->
-    <script type="module">
-        // ========================================
-        // 🔥 FIREBASE CONFIGURATIE - PAS DIT AAN!
-        // ========================================
-        // Vervang onderstaande waardes met jouw eigen Firebase config
-        // die je krijgt in Firebase Console > Project Settings > Your apps
+    <script>
+            // Import the functions you need from the SDKs you need
+    import { initializeApp } from "firebase/app";
+    // TODO: Add SDKs for Firebase products that you want to use
+    // https://firebase.google.com/docs/web/setup#available-libraries
+    
+    // Your web app's Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyAN68XTo6WUpj9tkdVx_VdzAiVYqmNIbaI",
+      authDomain: "spel-principes.firebaseapp.com",
+      projectId: "spel-principes",
+      storageBucket: "spel-principes.firebasestorage.app",
+      messagingSenderId: "783487670370",
+      appId: "1:783487670370:web:4e47838050ced3ede0d93b"
+    };
+    
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+
         
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, onSnapshot, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-
-        const firebaseConfig = {
-            apiKey: "PLAK-HIER-JOUW-API-KEY",
-            authDomain: "PLAK-HIER-JOUW-AUTH-DOMAIN",
-            projectId: "PLAK-HIER-JOUW-PROJECT-ID",
-            storageBucket: "PLAK-HIER-JOUW-STORAGE-BUCKET",
-            messagingSenderId: "PLAK-HIER-JOUW-MESSAGING-SENDER-ID",
-            appId: "PLAK-HIER-JOUW-APP-ID"
-        };
-
-        // ========================================
-        // APPLICATIE CODE (niet aanpassen)
-        // ========================================
-
-        let app, db;
-        
-        // Initialiseer Firebase
-        try {
-            app = initializeApp(firebaseConfig);
-            db = getFirestore(app);
-            console.log('Firebase verbonden!');
-        } catch (error) {
-            showError('Firebase configuratie fout: ' + error.message);
-            document.getElementById('loading').classList.add('hidden');
-        }
-
         const CATEGORIES = ['Aanvallen', 'Verdedigen', 'Balverlies', 'Balverovering'];
         let principles = [];
         let activeCategory = 'Aanvallen';
         let userId = getUserId();
+
+        // Initialiseer app
+        async function init() {
+            await loadData();
+            renderCategories();
+            renderPrinciples();
+            setupEventListeners();
+            document.getElementById('loading').classList.add('hidden');
+        }
 
         // User ID
         function getUserId() {
@@ -115,33 +101,26 @@
             return id;
         }
 
-        // Show error
-        function showError(message) {
-            document.getElementById('errorMessage').textContent = message;
-            document.getElementById('error').classList.remove('hidden');
-        }
-
-        // Laad data van Firebase met real-time updates
+        // Laad data
         async function loadData() {
             try {
-                const q = query(collection(db, 'principles'));
-                
-                // Real-time listener
-                onSnapshot(q, (snapshot) => {
-                    principles = [];
-                    snapshot.forEach((doc) => {
-                        principles.push({ id: doc.id, ...doc.data() });
-                    });
-                    renderCategories();
-                    renderPrinciples();
-                    document.getElementById('loading').classList.add('hidden');
-                }, (error) => {
-                    showError('Fout bij laden: ' + error.message);
-                    document.getElementById('loading').classList.add('hidden');
-                });
+                const keys = await window.storage.list('principle:');
+                if (keys && keys.keys) {
+                    const loadedPrinciples = [];
+                    for (const key of keys.keys) {
+                        try {
+                            const result = await window.storage.get(key, true);
+                            if (result) {
+                                loadedPrinciples.push(JSON.parse(result.value));
+                            }
+                        } catch (err) {
+                            console.log('Key niet gevonden:', key);
+                        }
+                    }
+                    principles = loadedPrinciples;
+                }
             } catch (error) {
-                showError('Fout bij verbinden met database: ' + error.message);
-                document.getElementById('loading').classList.add('hidden');
+                console.log('Eerste keer laden');
             }
         }
 
@@ -152,7 +131,7 @@
                 const count = principles.filter(p => p.category === category).length;
                 const isActive = category === activeCategory;
                 return `
-                    <button onclick="window.setActiveCategory('${category}')" 
+                    <button onclick="setActiveCategory('${category}')" 
                         class="p-4 rounded-lg font-semibold transition-all ${
                             isActive 
                                 ? 'bg-green-600 text-white shadow-lg scale-105' 
@@ -183,16 +162,16 @@
             }
 
             container.innerHTML = filtered.map(principle => {
-                const hasLiked = principle.likedBy && principle.likedBy.includes(userId);
+                const hasLiked = principle.likedBy.includes(userId);
                 return `
                     <div class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow p-6">
                         <div class="flex gap-4">
-                            <button onclick="window.toggleLike('${principle.id}')" 
+                            <button onclick="toggleLike('${principle.id}')" 
                                 class="flex flex-col items-center justify-center min-w-16 ${
                                     hasLiked ? 'text-blue-600' : 'text-gray-400 hover:text-blue-600'
                                 } transition-colors">
                                 <span class="text-2xl">${hasLiked ? '👍' : '👍🏻'}</span>
-                                <span class="text-sm font-semibold mt-1">${principle.likes || 0}</span>
+                                <span class="text-sm font-semibold mt-1">${principle.likes}</span>
                             </button>
                             <div class="flex-1">
                                 <p class="text-gray-800 leading-relaxed">${escapeHtml(principle.text)}</p>
@@ -213,7 +192,7 @@
         }
 
         // Set active category
-        window.setActiveCategory = function(category) {
+        function setActiveCategory(category) {
             activeCategory = category;
             renderCategories();
             renderPrinciples();
@@ -221,26 +200,22 @@
         }
 
         // Toggle like
-        window.toggleLike = async function(principleId) {
+        async function toggleLike(principleId) {
             const principle = principles.find(p => p.id === principleId);
             if (!principle) return;
 
-            const likedBy = principle.likedBy || [];
-            const hasLiked = likedBy.includes(userId);
-            
-            const newLikes = hasLiked ? (principle.likes || 0) - 1 : (principle.likes || 0) + 1;
-            const newLikedBy = hasLiked 
-                ? likedBy.filter(id => id !== userId)
-                : [...likedBy, userId];
+            const hasLiked = principle.likedBy.includes(userId);
+            principle.likes = hasLiked ? principle.likes - 1 : principle.likes + 1;
+            principle.likedBy = hasLiked 
+                ? principle.likedBy.filter(id => id !== userId)
+                : [...principle.likedBy, userId];
 
             try {
-                const principleRef = doc(db, 'principles', principleId);
-                await updateDoc(principleRef, {
-                    likes: newLikes,
-                    likedBy: newLikedBy
-                });
+                await window.storage.set(`principle:${principleId}`, JSON.stringify(principle), true);
+                renderPrinciples();
+                renderCategories();
             } catch (error) {
-                showError('Fout bij liken: ' + error.message);
+                alert('Fout bij liken: ' + error.message);
             }
         }
 
@@ -250,19 +225,22 @@
             if (!text) return;
 
             const principle = {
+                id: Date.now().toString(),
                 category: activeCategory,
                 text: text,
                 likes: 0,
-                likedBy: [],
-                createdAt: new Date().toISOString()
+                likedBy: []
             };
 
             try {
-                await addDoc(collection(db, 'principles'), principle);
+                await window.storage.set(`principle:${principle.id}`, JSON.stringify(principle), true);
+                principles.push(principle);
                 document.getElementById('principleText').value = '';
                 document.getElementById('addForm').classList.add('hidden');
+                renderPrinciples();
+                renderCategories();
             } catch (error) {
-                showError('Fout bij opslaan: ' + error.message);
+                alert('Fout bij opslaan: ' + error.message);
             }
         }
 
@@ -287,10 +265,7 @@
         }
 
         // Start app
-        if (db) {
-            setupEventListeners();
-            loadData();
-        }
+        init();
     </script>
 </body>
 </html>
