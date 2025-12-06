@@ -20,20 +20,31 @@
             <!-- Header -->
             <div class="text-center mb-8">
                 <h1 class="text-4xl font-bold text-gray-800 mb-2">⚽ Voetbal Spelprincipes</h1>
-                <p class="text-gray-600">Verzamel en stem op spelprincipes van trainers voor trainers</p>
+                <p class="text-gray-600">Verzamel en stem op spelprincipes voor trainers</p>
             </div>
 
-            <!-- Export buttons -->
-            <div class="mb-6 flex flex-wrap gap-3 justify-center no-print">
-                <button onclick="window.exportToCSV()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2 transition-colors">
-                    📊 Export naar CSV
-                </button>
-                <button onclick="window.exportToJSON()" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2 transition-colors">
-                    💾 Export naar JSON
-                </button>
-                <button onclick="window.printPDF()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2 transition-colors">
-                    📄 Print/PDF
-                </button>
+            <!-- Export dropdown -->
+            <div class="mb-6 flex justify-center no-print">
+                <div class="relative">
+                    <button id="exportBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-semibold flex items-center gap-2 transition-colors">
+                        📥 Exporteer
+                        <span id="exportArrow">▼</span>
+                    </button>
+                    <div id="exportMenu" class="hidden absolute top-full mt-2 bg-white rounded-lg shadow-lg overflow-hidden z-10 min-w-full">
+                        <button onclick="window.exportToCSV()" class="w-full text-left px-6 py-3 hover:bg-gray-100 flex items-center gap-3 transition-colors">
+                            <span>📊</span>
+                            <span>CSV (Excel)</span>
+                        </button>
+                        <button onclick="window.exportToJSON()" class="w-full text-left px-6 py-3 hover:bg-gray-100 flex items-center gap-3 transition-colors">
+                            <span>💾</span>
+                            <span>JSON</span>
+                        </button>
+                        <button onclick="window.printPDF()" class="w-full text-left px-6 py-3 hover:bg-gray-100 flex items-center gap-3 transition-colors">
+                            <span>📄</span>
+                            <span>Print/PDF</span>
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <!-- Categorieën -->
@@ -337,6 +348,7 @@
 
         // Export functions
         window.exportToCSV = function() {
+            closeExportMenu();
             let csv = 'Categorie,Spelprincipe,Likes\n';
             principles
                 .sort((a, b) => b.likes - a.likes)
@@ -349,6 +361,7 @@
         }
 
         window.exportToJSON = function() {
+            closeExportMenu();
             const data = principles.map(p => ({
                 category: p.category,
                 text: p.text,
@@ -359,6 +372,7 @@
         }
 
         window.printPDF = function() {
+            closeExportMenu();
             window.print();
         }
 
@@ -374,6 +388,25 @@
 
         // Event listeners
         function setupEventListeners() {
+            // Export dropdown toggle
+            document.getElementById('exportBtn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                const menu = document.getElementById('exportMenu');
+                const arrow = document.getElementById('exportArrow');
+                if (menu.classList.contains('hidden')) {
+                    menu.classList.remove('hidden');
+                    arrow.textContent = '▲';
+                } else {
+                    menu.classList.add('hidden');
+                    arrow.textContent = '▼';
+                }
+            });
+
+            // Close dropdown when clicking outside
+            document.addEventListener('click', () => {
+                closeExportMenu();
+            });
+
             document.getElementById('addBtn').addEventListener('click', () => {
                 editingPrincipleId = null;
                 document.getElementById('formTitle').textContent = `Nieuw principe: ${activeCategory}`;
@@ -390,6 +423,13 @@
                     savePrinciple();
                 }
             });
+        }
+
+        function closeExportMenu() {
+            const menu = document.getElementById('exportMenu');
+            const arrow = document.getElementById('exportArrow');
+            menu.classList.add('hidden');
+            arrow.textContent = '▼';
         }
 
         if (db) {
