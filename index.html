@@ -73,15 +73,15 @@
         // die je krijgt in Firebase Console > Project Settings > Your apps
         
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, onSnapshot, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, onSnapshot, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
         const firebaseConfig = {
-             apiKey: "AIzaSyAN68XTo6WUpj9tkdVx_VdzAiVYqmNIbaI",
-    authDomain: "spel-principes.firebaseapp.com",
-    projectId: "spel-principes",
-    storageBucket: "spel-principes.firebasestorage.app",
-    messagingSenderId: "783487670370",
-    appId: "1:783487670370:web:4e47838050ced3ede0d93b"
+            apiKey: "AIzaSyAN68XTo6WUpj9tkdVx_VdzAiVYqmNIbaI",
+            authDomain: "spel-principes.firebaseapp.com",
+            projectId: "spel-principes",
+            storageBucket: "spel-principes.firebasestorage.app",
+            messagingSenderId: "783487670370",
+            appId: "1:783487670370:web:4e47838050ced3ede0d93b"
         };
 
         // ========================================
@@ -184,6 +184,7 @@
 
             container.innerHTML = filtered.map(principle => {
                 const hasLiked = principle.likedBy && principle.likedBy.includes(userId);
+                const isOwner = principle.createdBy === userId;
                 return `
                     <div class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow p-6">
                         <div class="flex gap-4">
@@ -197,6 +198,13 @@
                             <div class="flex-1">
                                 <p class="text-gray-800 leading-relaxed">${escapeHtml(principle.text)}</p>
                             </div>
+                            ${isOwner ? `
+                                <button onclick="window.deletePrinciple('${principle.id}')" 
+                                    class="text-red-500 hover:text-red-700 transition-colors self-start"
+                                    title="Verwijder">
+                                    <span class="text-xl">🗑️</span>
+                                </button>
+                            ` : ''}
                         </div>
                     </div>
                 `;
@@ -244,6 +252,20 @@
             }
         }
 
+        // Delete principle
+        window.deletePrinciple = async function(principleId) {
+            if (!confirm('Weet je zeker dat je dit spelprincipe wilt verwijderen?')) {
+                return;
+            }
+
+            try {
+                const principleRef = doc(db, 'principles', principleId);
+                await deleteDoc(principleRef);
+            } catch (error) {
+                showError('Fout bij verwijderen: ' + error.message);
+            }
+        }
+
         // Add principle
         async function addPrinciple() {
             const text = document.getElementById('principleText').value.trim();
@@ -254,6 +276,7 @@
                 text: text,
                 likes: 0,
                 likedBy: [],
+                createdBy: userId,
                 createdAt: new Date().toISOString()
             };
 
